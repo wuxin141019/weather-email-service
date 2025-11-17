@@ -5,7 +5,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 
-# 配置信息 - 使用GitHub Secrets
+# 配置信息
 EMAIL_CONFIG = {
     'smtp_server': 'smtp.vip.163.com',
     'smtp_port': 465,
@@ -30,22 +30,25 @@ def get_weather_forecast():
     params = {
         'key': AMAP_CONFIG['api_key'],
         'city': AMAP_CONFIG['city'],
-        'extensions': 'all',
+        'extensions': 'all',  # 关键：改为'all'获取天气预报
         'output': 'JSON'
     }
     
     try:
+        print(f"🔄 请求天气预报，参数: {params}")
         response = requests.get(url, params=params, timeout=30)
         print(f"✅ 高德API响应状态码: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
+            print(f"📊 高德API完整响应: {data}")
             
             if data['status'] == '1' and data['infocode'] == '10000':
                 if 'forecasts' in data and len(data['forecasts']) > 0:
                     forecast_data = data['forecasts'][0]
                     today_forecast = forecast_data['casts'][0]
                     
+                    print(f"✅ 成功解析天气预报数据")
                     return {
                         'city': forecast_data['city'],
                         'date': today_forecast['date'],
@@ -60,8 +63,11 @@ def get_weather_forecast():
                         'night_power': today_forecast['nightpower'],
                         'report_time': forecast_data['reporttime']
                     }
+                else:
+                    print("❌ 响应中缺少forecasts数据")
             else:
                 print(f"❌ 高德API错误: {data.get('info', '未知错误')}")
+                print(f"❌ 错误代码: {data.get('infocode', '未知')}")
         else:
             print(f"❌ HTTP请求失败: {response.status_code}")
             
@@ -119,10 +125,12 @@ def format_weather_info(weather_data):
         <p><b>风向风力：</b>{weather_data['wind_direction']} {weather_data['wind_power']}级</p>
         """
     else:
+        # 处理天气变化
         weather_phenomenon = weather_data['day_weather']
         if weather_data['day_weather'] != weather_data['night_weather']:
             weather_phenomenon = f"{weather_data['day_weather']}转{weather_data['night_weather']}"
         
+        # 温度范围
         temp_range = f"{weather_data['night_temp']}~{weather_data['day_temp']}°C"
         
         return f"""
@@ -139,15 +147,18 @@ def send_weather_email():
         print("❌ 邮箱密码未配置")
         return False
         
-    # 获取天气数据
+    # 优先获取天气预报
+    print("🔄 尝试获取天气预报...")
     weather = get_weather_forecast()
     weather_type = "预报"
     
     if not weather:
+        print("🔄 天气预报获取失败，尝试获取实时天气...")
         weather = get_current_weather()
         weather_type = "实时"
     
     if not weather:
+        print("❌ 所有天气数据获取失败")
         return send_test_email()
 
     # 构建邮件内容
@@ -162,7 +173,9 @@ def send_weather_email():
             body {{ font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }}
             .header {{ color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }}
             .weather-info {{ background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; }}
+            .weather-item {{ margin: 10px 0; }}
             .footer {{ color: #7f8c8d; font-size: 12px; margin-top: 20px; }}
+            .temperature {{ color: #e74c3c; font-weight: bold; }}
         </style>
     </head>
     <body>
