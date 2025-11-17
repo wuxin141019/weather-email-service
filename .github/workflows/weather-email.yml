@@ -3,7 +3,7 @@ name: Daily Weather Email
 on:
   # 定时任务 - 每天北京时间早上8点运行
   schedule:
-    - cron: '0 0 * * *'  # UTC时间0点（北京时间8点）
+    - cron: '0 22 * * *'  # UTC时间0点（北京时间6点）
   
   # 允许手动触发
   workflow_dispatch:
